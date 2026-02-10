@@ -21,7 +21,17 @@ This project provides a modular Python workflow for football match analytics and
   - Second Half Result
   - Corners Over/Under 8.5
 - **Dashboard**
-  - Streamlit UI with table, charts and match-level explanations.
+  - Streamlit UI with:
+    - clickable match selection and detailed match panel
+    - one-click per-match Telegram notification
+    - charts and match-level explanations
+- **Coupon engine**
+  - Builds AI combined tickets from highest-confidence picks.
+  - Supports saving coupons and sending coupon messages to Telegram.
+- **History and ROI tracking**
+  - Stores past predictions and coupons in local JSON history.
+  - Fetches completed match results and settles predictions.
+  - Calculates win rate, P/L and ROI for both picks and coupons.
 - **Automation**
   - Threshold-based Telegram notifications (for example `%80+`).
   - CLI runner for cron / scheduler usage.
@@ -34,6 +44,7 @@ This project provides a modular Python workflow for football match analytics and
 - `app.py` -> Streamlit dashboard
 - `run_pipeline.py` -> Command-line automation entrypoint
 - `config.py` -> `.env` loader
+- `history.py` -> Prediction history, coupon and ROI settlement engine
 
 ## Setup
 
@@ -79,3 +90,4 @@ python run_pipeline.py --date 2026-02-10 --send-telegram-demo
 - Direct scraping may break because source sites can change HTML or apply anti-bot protection.
 - The collector is implemented to try web scraping first and then use API-Sports fallback.
 - xG values are approximated when direct xG feeds are not available from the active source.
+- History data is persisted in `data/history.json`.
