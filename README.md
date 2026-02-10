@@ -68,6 +68,12 @@ streamlit run app.py
 python run_pipeline.py --date 2026-02-10 --threshold 80 --send-telegram
 ```
 
+Single demo Telegram message:
+
+```bash
+python run_pipeline.py --date 2026-02-10 --send-telegram-demo
+```
+
 ## Notes
 
 - Direct scraping may break because source sites can change HTML or apply anti-bot protection.

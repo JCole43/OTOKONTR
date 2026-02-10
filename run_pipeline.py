@@ -41,7 +41,43 @@ def _summary_row(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def run(target_date: date, threshold: float, send_telegram: bool) -> None:
+def _top_probability(item: Dict[str, Any]) -> float:
+    prediction = item.get("prediction", {})
+    top_pick = prediction.get("top_pick", {})
+    return float(top_pick.get("probability", 0.0))
+
+
+def _send_demo_telegram(
+    notifier: TelegramNotifier,
+    analyzed: List[Dict[str, Any]],
+    target_date: date,
+) -> bool:
+    if not notifier.is_configured:
+        LOGGER.warning("Telegram credentials missing; demo notification skipped.")
+        return False
+
+    if analyzed:
+        best_item = max(analyzed, key=_top_probability)
+        best_match = best_item.get("match", {})
+        best_prediction = best_item.get("prediction", {})
+        demo_body = notifier.format_alert(best_match, best_prediction, threshold=0.0)
+        message = "<b>DEMO MESAJI (TEK GONDERIM)</b>\n\n" + demo_body
+    else:
+        message = (
+            "<b>DEMO MESAJI (TEK GONDERIM)</b>\n"
+            f"Tarih: {target_date.isoformat()}\n"
+            "Bu tarihte analiz edilecek mac bulunamadi, ancak Telegram baglantisi aktif."
+        )
+
+    return notifier.send_message(message)
+
+
+def run(
+    target_date: date,
+    threshold: float,
+    send_telegram: bool,
+    send_telegram_demo: bool,
+) -> None:
     settings = Settings.from_env()
     collector = MatchDataCollector(settings=settings)
     analyzer = GeminiAnalyzer(settings=settings)
@@ -57,6 +93,11 @@ def run(target_date: date, threshold: float, send_telegram: bool) -> None:
         row = _summary_row(item)
         print(json.dumps(row, ensure_ascii=True))
 
+    if send_telegram_demo:
+        sent = _send_demo_telegram(notifier=notifier, analyzed=analyzed, target_date=target_date)
+        print(f"Telegram demo sent: {sent}")
+        return
+
     if send_telegram:
         if not notifier.is_configured:
             LOGGER.warning("Telegram credentials missing; notifications skipped.")
@@ -70,6 +111,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--date", dest="date_str", default=date.today().isoformat())
     parser.add_argument("--threshold", type=float, default=80.0)
     parser.add_argument("--send-telegram", action="store_true")
+    parser.add_argument(
+        "--send-telegram-demo",
+        action="store_true",
+        help="Send only one demo notification to Telegram.",
+    )
     return parser
 
 
@@ -79,4 +125,5 @@ if __name__ == "__main__":
         target_date=_parse_date(args.date_str),
         threshold=args.threshold,
         send_telegram=args.send_telegram,
+        send_telegram_demo=args.send_telegram_demo,
     )
