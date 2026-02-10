@@ -5,10 +5,10 @@ This project provides a modular Python workflow for football match analytics and
 ## Features
 
 - **Data ingestion**
-  - Attempts to collect match cards from:
+  - If `FOOTBALL_API_KEY` (or `API_SPORTS_KEY`) is configured, the system uses Football API (`v3.football.api-sports.io`) as primary source.
+  - If API returns no records, it tries web scraping fallback:
     - `Nesine.com`
     - `Iddaa.com`
-  - If scraping returns no usable records, it falls back to **API-Sports** (`api-football`) when configured.
 - **Analysis engine**
   - Statistical baseline model (form + xG proxy + Poisson probabilities + odds priors).
   - Optional Gemini 1.5 Pro calibration (`GEMINI_API_KEY`) for hybrid predictions.

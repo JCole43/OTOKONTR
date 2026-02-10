@@ -295,7 +295,7 @@ class NesineScraper(BaseHttpClient):
         try:
             html = self._get_text(self.settings.nesine_url)
         except requests.RequestException as exc:
-            LOGGER.warning("Nesine data fetch failed: %s", exc)
+            LOGGER.info("Nesine data fetch failed (ignored when Football API is active): %s", exc)
             return []
         return self._build_matches_from_html(html, target_date, source="nesine")
 
@@ -336,7 +336,7 @@ class IddaaScraper(NesineScraper):
         try:
             html = self._get_text(self.settings.iddaa_url)
         except requests.RequestException as exc:
-            LOGGER.warning("Iddaa data fetch failed: %s", exc)
+            LOGGER.info("Iddaa data fetch failed (ignored when Football API is active): %s", exc)
             return []
         return self._build_matches_from_html(html, target_date, source="iddaa")
 
@@ -636,13 +636,18 @@ class MatchDataCollector:
 
     def collect_matches(self, target_date: Optional[date] = None) -> List[Dict[str, Any]]:
         target_date = target_date or date.today()
-        nesine_matches = self.nesine.fetch_matches(target_date)
-        iddaa_matches = self.iddaa.fetch_matches(target_date)
-        web_matches = self._deduplicate([*nesine_matches, *iddaa_matches])
 
         api_matches: List[MatchData] = []
         if self.api_sports.is_configured:
             api_matches = self.api_sports.fetch_matches(target_date)
+            if api_matches:
+                LOGGER.info("Using Football API as primary source (%s matches).", len(api_matches))
+                return [match.to_payload() for match in api_matches]
+            LOGGER.warning("Football API returned no matches; trying web scraping fallback.")
+
+        nesine_matches = self.nesine.fetch_matches(target_date)
+        iddaa_matches = self.iddaa.fetch_matches(target_date)
+        web_matches = self._deduplicate([*nesine_matches, *iddaa_matches])
 
         if web_matches and api_matches:
             merged = self._merge_web_and_api(web_matches, api_matches)

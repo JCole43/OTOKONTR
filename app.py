@@ -27,11 +27,18 @@ logging.basicConfig(level=logging.INFO)
 st.set_page_config(page_title="Futbol Tahmin Sistemi", layout="wide")
 st.title("Profesyonel Futbol Mac Tahmin ve Analiz Sistemi")
 
-settings = Settings.from_env()
-collector = MatchDataCollector(settings)
-analyzer = GeminiAnalyzer(settings=settings)
-notifier = TelegramNotifier(settings=settings)
-history_store = HistoryStore(settings=settings)
+
+@st.cache_resource(show_spinner=False)
+def _build_services():
+    settings = Settings.from_env()
+    collector = MatchDataCollector(settings)
+    analyzer = GeminiAnalyzer(settings=settings)
+    notifier = TelegramNotifier(settings=settings)
+    history_store = HistoryStore(settings=settings)
+    return settings, collector, analyzer, notifier, history_store
+
+
+settings, collector, analyzer, notifier, history_store = _build_services()
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -189,7 +196,17 @@ if run_button:
         st.session_state["threshold"] = threshold
         st.session_state["target_date"] = target_date.isoformat()
         saved_count = history_store.upsert_predictions(analyzed, target_date=target_date)
-    st.sidebar.success(f"Analiz tamamlandi. Kaydedilen/yenilenen tahmin: {saved_count}")
+    if not matches:
+        if not settings.api_sports_key:
+            st.sidebar.error(
+                "Football API key okunamadi. .env veya .env.example dosyasinda FOOTBALL_API_KEY girin."
+            )
+        else:
+            st.sidebar.warning(
+                "Bu tarih icin mac bulunamadi veya API limitine takildi. Farkli tarih deneyin."
+            )
+    else:
+        st.sidebar.success(f"Analiz tamamlandi. Kaydedilen/yenilenen tahmin: {saved_count}")
 
 
 analyzed_matches: List[Dict[str, Any]] = st.session_state.get("analyzed_matches", [])
