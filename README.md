@@ -52,7 +52,8 @@ cp .env.example .env
 
 Required keys:
 - `GEMINI_API_KEY` (optional, statistical fallback works without it)
-- `API_SPORTS_KEY` (recommended for reliable match/stat data fallback)
+- `API_SPORTS_KEY` or `FOOTBALL_API_KEY` (recommended for reliable match/stat data fallback)
+- `API_SPORTS_HOST` or `API_SPORTS_URL` (defaults to `v3.football.api-sports.io`)
 - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (for notifications)
 
 ## Run Streamlit Dashboard

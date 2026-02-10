@@ -344,7 +344,15 @@ class IddaaScraper(NesineScraper):
 class ApiSportsClient(BaseHttpClient):
     def __init__(self, settings: Settings) -> None:
         super().__init__(settings)
-        self.base_url = f"https://{self.settings.api_sports_host}".rstrip("/")
+        configured_host = self.settings.api_sports_host.strip().rstrip("/")
+        if configured_host.startswith("https://") or configured_host.startswith("http://"):
+            self.base_url = configured_host
+        else:
+            self.base_url = f"https://{configured_host}"
+        self.base_url = self.base_url.rstrip("/")
+        self._rapidapi_host = (
+            configured_host.replace("https://", "").replace("http://", "").rstrip("/")
+        )
         self._team_cache: Dict[Tuple[int, int, int], TeamStats] = {}
         self._injury_cache: Dict[Tuple[int, int, int], List[str]] = {}
         self._odds_cache: Dict[int, Dict[str, float]] = {}
@@ -360,7 +368,7 @@ class ApiSportsClient(BaseHttpClient):
         headers = {
             "x-apisports-key": self.settings.api_sports_key,
             "x-rapidapi-key": self.settings.api_sports_key,
-            "x-rapidapi-host": self.settings.api_sports_host,
+            "x-rapidapi-host": self._rapidapi_host,
         }
         response = self.session.get(
             f"{self.base_url}{endpoint}",

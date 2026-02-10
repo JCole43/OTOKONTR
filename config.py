@@ -22,10 +22,26 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         load_dotenv()
+        api_sports_key = (
+            os.getenv("API_SPORTS_KEY", "").strip()
+            or os.getenv("FOOTBALL_API_KEY", "").strip()
+        )
+        api_sports_host = os.getenv("API_SPORTS_HOST", "").strip()
+        api_sports_url = os.getenv("API_SPORTS_URL", "").strip()
+
+        if not api_sports_host and api_sports_url:
+            api_sports_host = (
+                api_sports_url.replace("https://", "")
+                .replace("http://", "")
+                .strip("/")
+            )
+        if not api_sports_host:
+            api_sports_host = "v3.football.api-sports.io"
+
         return cls(
             gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
-            api_sports_key=os.getenv("API_SPORTS_KEY", "").strip(),
-            api_sports_host=os.getenv("API_SPORTS_HOST", "v3.football.api-sports.io").strip(),
+            api_sports_key=api_sports_key,
+            api_sports_host=api_sports_host,
             nesine_url=os.getenv("NESINE_URL", "https://www.nesine.com/iddaa/futbol").strip(),
             iddaa_url=os.getenv("IDDAA_URL", "https://www.iddaa.com/program").strip(),
             telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", "").strip(),
