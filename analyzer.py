@@ -258,7 +258,7 @@ class GeminiAnalyzer:
     def __init__(
         self,
         settings: Optional[Settings] = None,
-        model_name: str = "gemini-1.5-pro",
+        model_name: str = "gemini-1.5-pro-latest",
         temperature: float = 0.15,
     ) -> None:
         self.settings = settings or Settings.from_env()
@@ -266,6 +266,7 @@ class GeminiAnalyzer:
         self.temperature = temperature
         self.stat_model = StatisticalModel()
         self._client = None
+        self._genai = None
 
         if not self.settings.gemini_api_key:
             LOGGER.info("GEMINI_API_KEY is not set. Statistical-only mode enabled.")
@@ -279,7 +280,10 @@ class GeminiAnalyzer:
 
         try:
             genai.configure(api_key=self.settings.gemini_api_key)
+            self._genai = genai
+            self.model_name = self._resolve_model_name(preferred_model=self.model_name)
             self._client = genai.GenerativeModel(self.model_name)
+            LOGGER.info("Gemini model selected: %s", self.model_name)
         except Exception as exc:  # pragma: no cover - network/client setup
             LOGGER.warning("Gemini client initialization failed: %s", exc)
             self._client = None
@@ -303,6 +307,18 @@ class GeminiAnalyzer:
             merged["model"] = "hybrid_statistical_gemini"
             return merged
         except Exception as exc:  # pragma: no cover - network/model runtime
+            if self._should_retry_with_fallback_model(exc) and self._reinitialize_with_fallback_model():
+                try:
+                    gemini_payload = self._call_gemini(match, baseline)
+                    merged = self._merge_predictions(baseline, gemini_payload)
+                    merged["model"] = "hybrid_statistical_gemini"
+                    return merged
+                except Exception as retry_exc:  # pragma: no cover - network/model runtime
+                    LOGGER.warning(
+                        "Gemini retry with fallback model failed; using statistical model: %s",
+                        retry_exc,
+                    )
+
             LOGGER.warning("Gemini analysis failed; fallback to statistical model: %s", exc)
             baseline["model"] = "statistical_fallback"
             baseline["summary"] = (
@@ -352,6 +368,83 @@ class GeminiAnalyzer:
         content = getattr(response, "text", "") or ""
         payload = self._extract_json(content)
         return self._coerce_payload(payload)
+
+    def _resolve_model_name(self, preferred_model: str) -> str:
+        if not self._genai:
+            return preferred_model
+
+        available_models: List[str] = []
+        try:
+            for model in self._genai.list_models():
+                methods = getattr(model, "supported_generation_methods", []) or []
+                if "generateContent" not in methods:
+                    continue
+                model_name = str(getattr(model, "name", "")).strip()
+                if model_name:
+                    available_models.append(model_name)
+        except Exception as exc:  # pragma: no cover - network/runtime
+            LOGGER.warning("Gemini model listing failed; using configured model '%s': %s", preferred_model, exc)
+            return preferred_model
+
+        if not available_models:
+            return preferred_model
+
+        # First, try exact matches with or without "models/" prefix.
+        normalized_target = preferred_model.replace("models/", "")
+        for model_name in available_models:
+            if model_name == preferred_model or model_name.replace("models/", "") == normalized_target:
+                return model_name
+
+        # Then prefer 1.5 Pro variants as requested, followed by stable alternatives.
+        priority_tokens = [
+            "gemini-1.5-pro",
+            "gemini-2.5-pro",
+            "gemini-2.0-pro",
+            "gemini-pro",
+        ]
+        for token in priority_tokens:
+            for model_name in available_models:
+                if token in model_name:
+                    return model_name
+
+        return available_models[0]
+
+    @staticmethod
+    def _should_retry_with_fallback_model(exc: Exception) -> bool:
+        message = str(exc).lower()
+        retry_tokens = (
+            "is not found",
+            "not supported",
+            "model",
+            "404",
+        )
+        return any(token in message for token in retry_tokens)
+
+    def _reinitialize_with_fallback_model(self) -> bool:
+        if not self._genai:
+            return False
+
+        previous_model = self.model_name
+        fallback_candidates = [
+            "gemini-1.5-pro-latest",
+            "gemini-1.5-pro",
+            "gemini-2.5-pro",
+            "gemini-2.0-pro",
+            "gemini-pro",
+        ]
+
+        for candidate in fallback_candidates:
+            resolved = self._resolve_model_name(candidate)
+            if resolved.replace("models/", "") == previous_model.replace("models/", ""):
+                continue
+            try:
+                self._client = self._genai.GenerativeModel(resolved)
+                self.model_name = resolved
+                LOGGER.info("Gemini fallback model selected: %s", self.model_name)
+                return True
+            except Exception:
+                continue
+        return False
 
     def _extract_json(self, text: str) -> Dict[str, Any]:
         text = text.strip()
