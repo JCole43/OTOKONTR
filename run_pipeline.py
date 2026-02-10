@@ -79,10 +79,15 @@ def run(
     send_telegram_demo: bool,
 ) -> None:
     settings = Settings.from_env()
-    collector = MatchDataCollector(settings=settings)
-    analyzer = GeminiAnalyzer(settings=settings)
     notifier = TelegramNotifier(settings=settings)
 
+    if send_telegram_demo:
+        sent = _send_demo_telegram(notifier=notifier, analyzed=[], target_date=target_date)
+        print(f"Telegram demo sent: {sent}")
+        return
+
+    collector = MatchDataCollector(settings=settings)
+    analyzer = GeminiAnalyzer(settings=settings)
     matches = collector.collect_matches(target_date=target_date)
     analyzed = analyzer.analyze_matches(matches)
 
@@ -92,11 +97,6 @@ def run(
     for item in analyzed:
         row = _summary_row(item)
         print(json.dumps(row, ensure_ascii=True))
-
-    if send_telegram_demo:
-        sent = _send_demo_telegram(notifier=notifier, analyzed=analyzed, target_date=target_date)
-        print(f"Telegram demo sent: {sent}")
-        return
 
     if send_telegram:
         if not notifier.is_configured:
