@@ -148,6 +148,16 @@ class _SchemaMatchExtractor:
         events: List[Dict[str, Any]] = []
         soup = BeautifulSoup(html, "html.parser")
 
+        for script in soup.find_all("script", attrs={"id": "__NEXT_DATA__"}):
+            content = (script.string or "").strip()
+            if not content:
+                continue
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError:
+                continue
+            events.extend(_SchemaMatchExtractor._walk_for_events(parsed))
+
         for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
             content = (script.string or "").strip()
             if not content:

@@ -93,7 +93,7 @@ metric_col2.metric("Yuksek Olasilikli Mac", high_confidence_count)
 metric_col3.metric("Ortalama Guven", round(df["Confidence"].mean(), 2))
 
 st.subheader("Tahmin Tablosu")
-st.dataframe(df, width="stretch", hide_index=True)
+st.dataframe(df, use_container_width=True, hide_index=True)
 
 chart_df = df.sort_values("Top Probability", ascending=False).head(20)
 fig = px.bar(
@@ -104,7 +104,7 @@ fig = px.bar(
     title="Mac Bazli En Guclu Tahminler",
 )
 fig.update_layout(xaxis_title=None, yaxis_title="Olasilik (%)")
-st.plotly_chart(fig, width="stretch")
+st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("Mac Bazli Detaylar")
 for item in analyzed_matches:
