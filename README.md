@@ -61,6 +61,8 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+The app first reads `.env`, and if not found it also falls back to `.env.example`.
+
 Required keys:
 - `GEMINI_API_KEY` (optional, statistical fallback works without it)
 - `API_SPORTS_KEY` or `FOOTBALL_API_KEY` (recommended for reliable match/stat data fallback)
