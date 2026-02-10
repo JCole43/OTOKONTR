@@ -26,8 +26,14 @@ class Settings:
             os.getenv("API_SPORTS_KEY", "").strip()
             or os.getenv("FOOTBALL_API_KEY", "").strip()
         )
-        api_sports_host = os.getenv("API_SPORTS_HOST", "").strip()
-        api_sports_url = os.getenv("API_SPORTS_URL", "").strip()
+        api_sports_host = (
+            os.getenv("API_SPORTS_HOST", "").strip()
+            or os.getenv("FOOTBALL_API_HOST", "").strip()
+        )
+        api_sports_url = (
+            os.getenv("API_SPORTS_URL", "").strip()
+            or os.getenv("FOOTBALL_API_URL", "").strip()
+        )
 
         if not api_sports_host and api_sports_url:
             api_sports_host = (

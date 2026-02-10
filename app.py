@@ -163,6 +163,7 @@ with st.sidebar:
     max_match_count = st.slider("Maksimum analiz mac adedi", min_value=5, max_value=80, value=25, step=1)
     run_button = st.button("Veri Cek ve Analiz Et", type="primary")
     refresh_results_button = st.button("Gecmis Sonuclari Guncelle")
+    st.caption("Football API durumu: " + ("Aktif" if bool(settings.api_sports_key) else "Pasif"))
     st.caption("Gemini durumu: " + ("Aktif" if analyzer.gemini_enabled else "Pasif (fallback)"))
     st.caption("Telegram durumu: " + ("Aktif" if notifier.is_configured else "Pasif"))
 
